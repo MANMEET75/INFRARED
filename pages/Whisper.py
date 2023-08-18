@@ -1,281 +1,106 @@
 import streamlit as st
-from dotenv import load_dotenv
-from PyPDF2 import PdfReader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings, HuggingFaceInstructEmbeddings
-from langchain.vectorstores import FAISS
-from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
-from langchain.chains import ConversationalRetrievalChain
-from htmlTemplates import css, bot_template, user_template
-from langchain.llms import HuggingFaceHub
+import whisper
+from pytube import YouTube
+from htmlTemplates import *
+import datetime
+import PyPDF2
 import os
-import config
+from fpdf import FPDF
 
-os.environ['OPENAI_API_KEY'] = config.OPENAI_API_KEY
-
-
+# Set up Streamlit page config
 st.set_page_config(
-    page_title="Infrared",
+    page_title="Whisper",
     page_icon="https://revoquant.com/assets/img/logo/logo-dark.png"
 )
+st.write(css, unsafe_allow_html=True)
 
+# Load the Whisper ASR model
+model = whisper.load_model('tiny')
+st.title("Video to Text Transcription with Whisper")
 
-def sidebar():
-    with st.sidebar:
-        st.markdown(
-            f"""
-           
-            <a href="http://revoquant.com" target="_blank">
-              <div style="padding: 0px; border-radius: 0px; text-decoration: none; font-family: cursive; font-size: 16px; white-space: nowrap; text-align: center; position: absolute; bottom: 0; width: 100%;">
-              <center>
-               <img style="position:relative;bottom:250px;" src="https://github.com/MANMEET75/INFRARED/raw/main/ilogo.png" width="270">
-              </center>
-              </div>
+# Sidebar to select upload option
+st.sidebar.header("Upload Option")
+upload_option = st.sidebar.radio("Select upload option:", ("Upload Audio", "Upload MP4", "YouTube URL"))
 
-            </a>
-          
-            
-            """,
-            unsafe_allow_html=True,
-        )
+if upload_option == "Upload Audio":
+    uploaded_file = st.sidebar.file_uploader("Upload an audio file", type=["mp3", "wav", "ogg"])
+    transcribe_button = st.sidebar.button("Transcribe")
 
-if __name__ == "__main__":
-    sidebar()
+elif upload_option == "Upload MP4":
+    uploaded_file = st.sidebar.file_uploader("Upload an MP4 file", type=["mp4"])
+    transcribe_button = st.sidebar.button("Transcribe")
 
+elif upload_option == "YouTube URL":
+    youtube_url = st.sidebar.text_input("Enter YouTube Video URL:")
+    transcribe_button = st.sidebar.button("Transcribe")
 
+# Main content area
+if transcribe_button:
+    try:
+        st.sidebar.info("Fetching audio stream...")
+        if upload_option == "Upload Audio":
+            audio_filename = "uploaded_audio.mp3"
+            with open(audio_filename, "wb") as f:
+                f.write(uploaded_file.read())
+        elif upload_option == "Upload MP4":
+            audio_filename = "uploaded_video.mp4"
+            with open(audio_filename, "wb") as f:
+                f.write(uploaded_file.read())
+        elif upload_option == "YouTube URL":
+            st.sidebar.info("Fetching video information...")
+            youtube_video = YouTube(youtube_url)
+            video_title = youtube_video.title
+            st.sidebar.success(f"Video fetched: {video_title}")
 
+            st.sidebar.info("Fetching audio stream...")
+            streams = youtube_video.streams.filter(only_audio=True)
+            audio_stream = streams.first()
+            st.sidebar.success("Audio stream fetched")
 
+            st.sidebar.info("Downloading audio...")
+            audio_filename = f"{video_title}.mp4"
+            audio_stream.download(filename=audio_filename)
+            st.sidebar.success("Audio downloaded")
 
+        st.sidebar.info("Starting transcription...")
+        t1 = datetime.datetime.now()
+        output = model.transcribe(audio_filename)
+        t2 = datetime.datetime.now()
+        st.sidebar.success(f"Transcription complete (time elapsed: {t2 - t1})")
 
+        st.sidebar.info("Displaying transcription results:")
 
-    
-def UI():
-    # Add custom HTML and CSS using Bootstrap
-    bootstrap_html = """
-
-        <center>
-
-        <h3 style="margin-bottom:100px;"><span style="color: #2b86d9;font-weight:800;text-align:center">Multiple PDF Query</span>:<span style="color:#000;">Effortlessly conduct precise PDF queries with Multiple PDF Query.</span></h3>
-        </center>
-
-        
-
-        <div class="cards-list">
-
-
-        <a href="https://infrared-2p52zc9tdhxech2i8ok9pf.streamlit.app/Whisper">
-        <div class="card 2">
-        <div class="card_image">
-            <img src="https://i.pinimg.com/originals/83/37/a5/8337a5a27a627d7b54f4526dc8a53f1f.gif" />
-            </div>
-        <div class="card_title title-dark">
-            <p>PDF Query</p>
-        </div>
-        </div>
-        </a>
-       
-    
-
-
-
-
-        
-        
-
-    
-
-
-    """
-
-    # CSS code for Bootstrap
-    bootstrap_css = """
-    <style>
-        [data-testid=stHeader]{
-        background-color: #2b86d9;
-        }
-        [data-testid=stSidebar] {
-        background-color: #D6E4E5;
-        }
-        [data-testid=stHeader] {
-            background-color: #2b86d9;
-        }
-        [data-testid=stVerticalBlock] {
-        position: relative;
-        top: 100px;
-        }
-
-                
-        [data-testid=stAppViewContainer] {
-            background-color: #F1F6F5;
-        }
-    
-        [data-testid=stMarkdownContainer] {
-            color: #2b86d9;
-        }
-        [id='tabs-bui2-tab-0'] {
-            color: #2b86d9;
-        }
-        .st-c7{
-        background-color: #ccc;
-        }
+        st.write(output['text'])
 
 
         
-     
-      
-        a{
-            text-decoration: none;
-        }
-      
-        .cards-list {
-        z-index: 0;
-        width: 100%;
-        display: flex;
-        justify-content: space-around;
-        flex-wrap: wrap;
-        }
 
-        .card {
-        margin: 70px auto;
-        width: 300px;
-        height: 300px;
-        border-radius: 40px;
-        box-shadow: 5px 5px 30px 7px rgba(0,0,0,0.25), -5px -5px 30px 7px rgba(0,0,0,0.22);
-        cursor: pointer;
-        transition: 0.4s;
-        }
+         # Create and save a PDF file with the transcription using fpdf
+        pdf_filename = 'transcription_output.pdf'
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.multi_cell(0, 10, output['text'])
+        pdf.output(pdf_filename)
+        st.sidebar.info("PDF file generated and saved.")
 
-        .card .card_image {
-        width: inherit;
-        height: inherit;
-        border-radius: 40px;
-        }
+        # Add a download button for the PDF file
+        if os.path.exists(pdf_filename):
+            with open(pdf_filename, 'rb') as file:
+                st.sidebar.download_button("Download Transcription PDF", file.read(), file_name='transcription_output.pdf')
 
-        .card .card_image img {
-        width: inherit;
-        height: inherit;
-        border-radius: 40px;
-        object-fit: cover;
-        }
-
-        .card .card_title {
-        text-align: center;
-        border-radius: 0px 0px 40px 40px;
-        font-family: sans-serif;
-        font-weight: bold;
-        font-size: 30px;
-        margin-top: -80px;
-        height: 40px;
-        font-weight:800;
-        position: relative;
-        top: 110px;
-        }
-        .card_title p{
-        color: #000;
-        text-decoration: none;
-        }
-        a:link {
-        text-decoration: none;
-        }
-
-        .card:hover {
-        transform: scale(0.9, 0.9);
-        box-shadow: 5px 5px 30px 15px rgba(0,0,0,0.25), 
-            -5px -5px 30px 15px rgba(0,0,0,0.22);
-        }
-
-        .title-white {
-        color: white;
-        }
-
-        .title-black {
-        color: black;
-        }
-
-        @media all and (max-width: 500px) {
-        .card-list {
-            /* On small screens, we are no longer using row direction but column */
-            flex-direction: column;
-        }
-        }
-
-
-        /*
-        .card {
-        margin: 30px auto;
-        width: 300px;
-        height: 300px;
-        border-radius: 40px;
-        background-image: url('https://i.redd.it/b3esnz5ra34y.jpg');
-        background-size: cover;
-        background-repeat: no-repeat;
-        background-position: center;
-        background-repeat: no-repeat;
-        box-shadow: 5px 5px 30px 7px rgba(0,0,0,0.25), -5px -5px 30px 7px rgba(0,0,0,0.22);
-        transition: 0.4s;
-        }
-        */
-        .container{
-            margin:50px;
-        }
-       
-        /* Add your custom CSS here or link to an external stylesheet */
-        /* For Bootstrap classes to work, make sure you have included the Bootstrap CSS and JS files in your index.html file */
-    </style>
-    """
-
-    # JavaScript code to enhance the app
-    bootstrap_js = """
-    <script>
-        // Add your custom JavaScript here or link to an external JS file
-        // For Bootstrap JavaScript components to work, make sure you have included the Bootstrap CSS and JS files in your index.html file
-    </script>
-    """
-
-    # Combine and render the HTML, CSS, and JavaScript
-    st.markdown(bootstrap_css, unsafe_allow_html=True)
-    st.markdown(bootstrap_html, unsafe_allow_html=True)
-    st.components.v1.html(bootstrap_js)
-    
-if __name__ == "__main__":
-    UI()
-
-
-footer="""<style>
-
-
-.footer {
-position: fixed;
-left: 0;
-bottom: 0;
-width: 100%;
-background-color: #2b86d9;
-color: black;
-text-align: center;
-
-}
-#footerText{
-color:#D6E4E5;
-position: relative;
-text-align: center;
-margin-top:20px;
-margin-bottom:20px;
-}
-</style>
-<center>
-<div class="footer">
-<p id="footerText">Copyright © 2023 All Rights Reserved Passion By RevoQuantAI</p>
-</div>
-</center>
-"""
-st.markdown(footer,unsafe_allow_html=True)
-
-
-def main():
-    st.write("working on whisper")
    
 
 
-if __name__ == '__main__':
-    main()
+     
+
+
+
+
+
+
+
+    except Exception as e:
+        st.sidebar.error(f"An error occurred: {str(e)}")
+
+
