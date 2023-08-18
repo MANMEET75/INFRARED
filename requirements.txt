@@ -21,4 +21,11 @@ altair==4
 tiktoken==0.4.0
 streamlit_chat
 
+fuzzywuzzy
+pytube
+whisper @ git+https://github.com/openai/whisper.git@8cf36f3508c9acd341a45eb2364239a3d81458b9
+pydub
+statsmodels
+fpdf
+
 # -e .
