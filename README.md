@@ -8,7 +8,7 @@ Unleash the power of machine learning and advanced statistics to find outliers a
 <img src="lifecycle1.gif">
 <img src="ilogo.png" width="200">
 <img src="infrared.gif" width="300">
-<img src="animate2-unscreen.gif.gif" width="300">
+<img src="animate2-unscreen.gif" width="300">
 
 
 # How to Deploy Streamlit app on EC2 instance
