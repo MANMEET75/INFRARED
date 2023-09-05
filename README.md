@@ -7,7 +7,7 @@ Unleash the power of machine learning and advanced statistics to find outliers a
 
 <img src="lifecycle1.gif">
 <img src="ilogo.png" width="200">
-<img src="animate.gif">
+
 
 # How to Deploy Streamlit app on EC2 instance
 
